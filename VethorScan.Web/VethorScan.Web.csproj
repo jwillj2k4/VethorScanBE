@@ -18,6 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\VethorScan.Contracts\VethorScan.Contracts.csproj" />
     <ProjectReference Include="..\VethorScan.Data\VethorScan.Data.csproj" />
   </ItemGroup>
 

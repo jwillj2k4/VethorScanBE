@@ -1,6 +1,6 @@
 ﻿namespace VethorScan.Contracts
 {
-    public class MetaData
+    public class VetInformationDto
     {
         public long TransactionsPerSecond { get; set; }
         public long TotalVetAmount { get; set; }

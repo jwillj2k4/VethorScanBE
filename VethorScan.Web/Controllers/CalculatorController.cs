@@ -1,26 +1,23 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-
-// For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+﻿using Microsoft.AspNetCore.Mvc;
+using VethorScan.Contracts;
 
 namespace VethorScan.Web.Controllers
 {
     [Route("api/[controller]")]
     public class CalculatorController : BaseController
     {
-        [HttpGet]
-        public IEnumerable<string> Get()
+
+        [HttpGet("GetCirculatingSupply")]
+        public CirculatingSupplyDto GetTotalCirculatingSupply()
         {
-            return new string[] { "value1", "value2" };
+            return new CirculatingSupplyDto();
         }
 
-        [HttpGet("{id}")]
-        public string Get(int id)
+        [HttpGet("Calculate")]
+        public AccountInformationDto GetTotalCalculation(VetInformationDto informationDto)
         {
-            return "value";
+            return new AccountInformationDto();
         }
+
     }
 }

@@ -1,6 +1,6 @@
 ﻿namespace VethorScan.Contracts
 {
-    public class BankAmount
+    public class AccountInformationDto
     {
         public double TotalAmount { get; set; }
         public double AmountDay { get; set; }

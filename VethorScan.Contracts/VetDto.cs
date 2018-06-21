@@ -2,7 +2,7 @@
 
 namespace VethorScan.Contracts
 {
-    public class VetDto : BankAmount
+    public class VetDto : AccountInformationDto
     {
     }
 }
