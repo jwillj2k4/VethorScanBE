@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+using VethorScan.AppMgr;
 using VethorScan.Contracts;
 
 namespace VethorScan.Web.Controllers
@@ -6,17 +8,35 @@ namespace VethorScan.Web.Controllers
     [Route("api/[controller]")]
     public class CalculatorController : BaseController
     {
+        private readonly CalculatorManager _calculatorManager;
 
-        [HttpGet("GetCirculatingSupply")]
-        public CirculatingSupplyDto GetTotalCirculatingSupply()
+        public CalculatorController(CalculatorManager calculatorManager)
         {
-            return new CirculatingSupplyDto();
+            _calculatorManager = calculatorManager;
         }
 
-        [HttpGet("Calculate")]
-        public AccountInformationDto GetTotalCalculation(VetInformationDto informationDto)
+        [HttpGet]
+        public Task<double> GetCurrentVetPrice()
         {
-            return new AccountInformationDto();
+            return _calculatorManager.GetCurrentVetPrice();
+        }
+
+        [HttpGet("GetVetMetadata")]
+        public Task<VetInformationDto> GetVetMetadata()
+        {
+            return _calculatorManager.GetVetMetadata();
+        }
+
+        [HttpPost("CalculateSimple")]
+        public Task<AccountInformationDto> CalculateSimple(VetInformationDto informationDto)
+        {
+            return _calculatorManager.CalculateSimple(informationDto);
+        }
+
+        [HttpPost("CalculateAdvanced")]
+        public Task<AccountInformationDto> CalculateAdvanced(VetInformationDto informationDto)
+        {
+            return _calculatorManager.CalculateAdvanced(informationDto);
         }
 
     }
