@@ -1,6 +1,6 @@
 ﻿namespace VethorScan.Contracts
 {
-    public class VetThorResultDto : UserProfitDto
+    public class VeThorResultDto : UserProfitDto
     {
         public decimal AmountPerDay { get; set; }
     }

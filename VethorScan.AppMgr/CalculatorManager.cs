@@ -52,18 +52,18 @@ namespace VethorScan.AppMgr
         {
             var result = await CalculateSimple(userVetInformation.UserVetAmount).ConfigureAwait(false);
 
-            result.VetThorResultDto = await CalculateVeThorAmounts(userVetInformation).ConfigureAwait(false);
+            result.VeThorResultDto = await CalculateVeThorAmounts(userVetInformation).ConfigureAwait(false);
 
             return result;
         }
 
-        private async Task<VetThorResultDto> CalculateVeThorAmounts(UserVetAmountsDto userVetInformation)
+        private async Task<VeThorResultDto> CalculateVeThorAmounts(UserVetAmountsDto userVetInformation)
         {
-            VetThorResultDto result =
-                new VetThorResultDto
+            VeThorResultDto result =
+                new VeThorResultDto
                 {
-                    AmountPerDay = await CalculateVetThorDayAmount(userVetInformation).ConfigureAwait(false),
-                    ProfitPerDay = await CalculateVethorProfitPerDay(userVetInformation).ConfigureAwait(false)
+                    AmountPerDay = await CalculateVeThorDayAmount(userVetInformation).ConfigureAwait(false),
+                    ProfitPerDay = await CalculateVeThorProfitPerDay(userVetInformation).ConfigureAwait(false)
                 };
 
             result.ProfitPerWeek = result.ProfitPerDay * 7;
@@ -81,7 +81,7 @@ namespace VethorScan.AppMgr
         /// </summary>
         /// <param name="userVetInformation"></param>
         /// <returns></returns>
-        private async Task<decimal> CalculateVethorProfitPerDay(UserVetAmountsDto userVetInformation)
+        private async Task<decimal> CalculateVeThorProfitPerDay(UserVetAmountsDto userVetInformation)
         {
             //10,000 Vet(Vet holding) / 525,770,505 = 0.0019 % of Vet Circulating Supply
             //Company willing to pay $0.5 per transaction on blockchain, smart contract execution
@@ -103,7 +103,7 @@ namespace VethorScan.AppMgr
         /// </summary>
         /// <param name="userVetInformation"></param>
         /// <returns></returns>
-        private async Task<decimal> CalculateVetThorDayAmount(UserVetAmountsDto userVetInformation)
+        private async Task<decimal> CalculateVeThorDayAmount(UserVetAmountsDto userVetInformation)
         {
             //Vethor generation is calculated by the following
             //total vet amount * the rate of vethor to vet generated per day
