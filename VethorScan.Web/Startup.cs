@@ -1,15 +1,17 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Swashbuckle.AspNetCore.Swagger;
 using VethorScan.AC;
+using VethorScan.AppMgr;
+using VethorScan.Common;
+using VethorScan.Common.CacheProfiles;
 using VethorScan.Domain.Vet;
 
 namespace VethorScan.Web
@@ -28,14 +30,43 @@ namespace VethorScan.Web
         {
             services.AddSingleton<IVetSystem, VetSystem>();
 
-            services.AddHttpClient<VetSystem>();
+            services.AddHttpClient<IVetSystem, VetSystem>(client =>
+                client.BaseAddress = new Uri(Configuration["VenCoinMarketCapUri"]));
 
-            services.AddMvc();
+            services.AddCors();
+
+            services.AddMemoryCache();
+
+            // Build the intermediate service provider
+            var sp = services.BuildServiceProvider();
+
+            var calculatorManager = new CalculatorManager(sp.GetService<IVetSystem>(), sp.GetService<IMemoryCache>());
+
+            //Task.Run(async () => await calculatorManager.Initialize().ConfigureAwait(false));
+
+            services.AddSingleton(calculatorManager);
+
+            services.AddMvc(options =>
+            {
+                options.CacheProfiles.Add(CacheProfilesEnum.Default.ToString(),
+                    new CacheProfile()
+                    {
+                        Duration = 60
+                    });
+                options.CacheProfiles.Add(CacheProfilesEnum.Never.ToString(),
+                    new CacheProfile()
+                    {
+                        Location = ResponseCacheLocation.None,
+                        NoStore = true
+                    });
+            });
 
             services.AddSwaggerGen(c =>
             {
-                c.SwaggerDoc("v1", new Info { Title = "VethorScan API", Version = "v1" });
+                c.SwaggerDoc("v1", new Info {Title = "VethorScan API", Version = "v1"});
+                c.MapType<decimal>(() => new Schema { Type = "number", Format = "decimal"});
             });
+
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

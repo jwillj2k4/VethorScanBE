@@ -1,10 +1,12 @@
 ﻿using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using VethorScan.AppMgr;
+using VethorScan.Common.CacheProfiles;
 using VethorScan.Contracts;
 
 namespace VethorScan.Web.Controllers
 {
+    [ResponseCache(Duration = 60)]
     [Route("api/[controller]")]
     public class CalculatorController : BaseController
     {
@@ -15,29 +17,34 @@ namespace VethorScan.Web.Controllers
             _calculatorManager = calculatorManager;
         }
 
-        [HttpGet]
-        public Task<double> GetCurrentVetPrice()
+        [HttpGet("GetVetPrice")]
+        public async Task<decimal> GetCurrentVetPrice()
         {
-            return _calculatorManager.GetCurrentVetPrice();
+            var result = await _calculatorManager.GetCurrentVetPrice().ConfigureAwait(false);
+            return result;
         }
 
         [HttpGet("GetVetMetadata")]
-        public Task<VetInformationDto> GetVetMetadata()
+        public async Task<VetMetaDataDto> GetVetMetadata()
         {
-            return _calculatorManager.GetVetMetadata();
+            var result = await _calculatorManager.GetVetMetadata().ConfigureAwait(false);
+            return result;
         }
 
+        [NeverCache]
         [HttpPost("CalculateSimple")]
-        public Task<AccountInformationDto> CalculateSimple(VetInformationDto informationDto)
+        public async Task<UserVetResultDto> CalculateSimple(decimal totalVetAmount)
         {
-            return _calculatorManager.CalculateSimple(informationDto);
+            var result = await _calculatorManager.CalculateSimple(totalVetAmount).ConfigureAwait(false);
+            return result;
         }
 
+        [NeverCache]
         [HttpPost("CalculateAdvanced")]
-        public Task<AccountInformationDto> CalculateAdvanced(VetInformationDto informationDto)
+        public async Task<UserVetResultDto> CalculateAdvanced(UserVetAmountsDto informationDto)
         {
-            return _calculatorManager.CalculateAdvanced(informationDto);
+            var result = await _calculatorManager.CalculateAdvanced(informationDto).ConfigureAwait(false);
+            return result;
         }
-
     }
 }

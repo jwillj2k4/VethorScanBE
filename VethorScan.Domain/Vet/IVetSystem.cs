@@ -5,6 +5,6 @@ namespace VethorScan.Domain.Vet
 {
     public interface IVetSystem
     {
-        Task<VetInformationDto> GetVetMetadata();
+        Task<VetMetaDataDto> GetVetMetadata();
     }
 }

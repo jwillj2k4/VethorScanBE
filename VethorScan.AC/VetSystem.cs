@@ -13,32 +13,30 @@ namespace VethorScan.AC
 {
     public class VetSystem : IVetSystem
     {
+        private const string VenCoinMarketCapUri = "VenCoinMarketCapUri";
         private readonly HttpClient _client;
         private readonly ILogger<VetSystem> _logger;
-        private readonly string _apiKey;
+        private readonly IConfiguration _config;
 
-        public VetSystem(HttpClient client, ILogger<VetSystem> logger, Uri baseAddress, IConfiguration config)
+        public VetSystem(HttpClient client, ILogger<VetSystem> logger, IConfiguration config)
         {
             _client = client;
-            _client.BaseAddress = baseAddress;
             _logger = logger;
-            _apiKey = config["CoinMarketCapAPIKey"];
+            _config = config;
         }
 
-        public async Task<VetInformationDto> GetVetMetadata()
+        public async Task<VetMetaDataDto> GetVetMetadata()
         {
             //make an http call to retrieve the current vet price from coin market cap
             try
             {
-                var episodesUrl = new Uri($"/v1/podcasts/shownum/episodes.json?api_key={_apiKey}", UriKind.Relative);
+                var url = new Uri(_config[VenCoinMarketCapUri], UriKind.Absolute);
 
-                _logger.LogWarning($"HttpClient: Loading {episodesUrl}");
-
-                var res = await _client.GetAsync(episodesUrl);
+                var res = await _client.GetAsync(url);
 
                 res.EnsureSuccessStatusCode();
 
-                return await res.Content.ReadAsJsonAsync<VetInformationDto>();
+                return await res.Content.ReadAsJsonAsync<VetMetaDataDto>();
             }
             catch (HttpRequestException ex)
             {
