@@ -11,11 +11,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VethorScan.Data", "VethorSc
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VethorScan.Domain", "VethorScan.Domain\VethorScan.Domain.csproj", "{49E402C6-DA87-492F-A6D6-3523CCF3E282}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VethorScan.AppMgr", "VethorScan.AppMgr\VethorScan.AppMgr.csproj", "{29970468-A0EA-4601-B4F3-83363587D01B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VethorScan.AppMgr", "VethorScan.AppMgr\VethorScan.AppMgr.csproj", "{29970468-A0EA-4601-B4F3-83363587D01B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VethorScan.Common", "VethorScan.Common\VethorScan.Common.csproj", "{FF498C04-CAF6-4C99-847E-1265423ADBD3}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VethorScan.Common", "VethorScan.Common\VethorScan.Common.csproj", "{FF498C04-CAF6-4C99-847E-1265423ADBD3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VethorScan.Web", "VethorScan.Web\VethorScan.Web.csproj", "{C16EB6FF-FB47-40E0-99FA-A56326F7B23C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VethorScan.Web", "VethorScan.Web\VethorScan.Web.csproj", "{C16EB6FF-FB47-40E0-99FA-A56326F7B23C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

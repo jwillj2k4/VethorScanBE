@@ -6,8 +6,6 @@ using VethorScan.Contracts;
 
 namespace VethorScan.Web.Controllers
 {
-    [ResponseCache(Duration = 60)]
-    [Route("api/[controller]")]
     public class CalculatorController : BaseController
     {
         private readonly CalculatorManager _calculatorManager;

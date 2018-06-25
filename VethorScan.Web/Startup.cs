@@ -1,8 +1,7 @@
 ﻿using System;
-using System.Net.Http;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
@@ -10,7 +9,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Swashbuckle.AspNetCore.Swagger;
 using VethorScan.AC;
 using VethorScan.AppMgr;
-using VethorScan.Common;
 using VethorScan.Common.CacheProfiles;
 using VethorScan.Domain.Vet;
 
@@ -46,6 +44,11 @@ namespace VethorScan.Web
 
             services.AddSingleton(calculatorManager);
 
+            services.Configure<IISOptions>(options =>
+            {
+                options.ForwardClientCertificate = true;
+            });
+
             services.AddMvc(options =>
             {
                 options.CacheProfiles.Add(CacheProfilesEnum.Default.ToString(),
@@ -63,7 +66,7 @@ namespace VethorScan.Web
 
             services.AddSwaggerGen(c =>
             {
-                c.SwaggerDoc("v1", new Info {Title = "VethorScan API", Version = "v1"});
+                c.SwaggerDoc("v1", new Info {Title = "VeThor Tracker API", Version = "v1"});
                 c.MapType<decimal>(() => new Schema { Type = "number", Format = "decimal"});
             });
 
@@ -77,14 +80,30 @@ namespace VethorScan.Web
                 app.UseDeveloperExceptionPage();
             }
 
-            app.UseMvc();
-
             app.UseSwagger();
 
             app.UseSwaggerUI(c =>
             {
                 c.SwaggerEndpoint("/swagger/v1/swagger.json", "My API V1");
             });
+
+            app.Use(async (context, next) =>
+            {
+                await next.Invoke();
+
+                //After going down the pipeline check if we 404'd. 
+                if (context.Response.StatusCode == StatusCodes.Status404NotFound)
+                {
+                    await context.Response.WriteAsync("Woops! We 404'd");
+                }
+                else if(context.Response.StatusCode != StatusCodes.Status200OK)
+                {
+                    await context.Response.WriteAsync(": Something went terribly wrong!");
+                }
+            });
+
+
+            app.UseMvcWithDefaultRoute();
         }
     }
 }
