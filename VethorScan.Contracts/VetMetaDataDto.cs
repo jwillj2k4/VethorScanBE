@@ -32,7 +32,7 @@ namespace VethorScan.Contracts
         public long Rank { get; set; }
 
         [JsonProperty("circulating_supply")]
-        public long CirculatingSupply { get; set; }
+        public override long CirculatingSupply { get; set; }
 
         [JsonProperty("total_supply")]
         public long TotalSupply { get; set; }

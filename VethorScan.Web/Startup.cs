@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Cors.Internal;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,15 +32,13 @@ namespace VethorScan.Web
 
             services.AddHttpClient<IVetSystem, VetSystem>(client =>
                 client.BaseAddress = new Uri(Configuration["VenCoinMarketCapUri"]));
-
-            services.AddCors();
-
+            
             services.AddMemoryCache();
 
             // Build the intermediate service provider
             var sp = services.BuildServiceProvider();
 
-            var calculatorManager = new CalculatorManager(sp.GetService<IVetSystem>(), sp.GetService<IMemoryCache>());
+            var calculatorManager = new CalculatorManager(new CalculatorService(sp.GetService<IMemoryCache>(), sp.GetService<IVetSystem>()));
 
             //Task.Run(async () => await calculatorManager.Initialize().ConfigureAwait(false));
 
@@ -64,6 +64,21 @@ namespace VethorScan.Web
                     });
             });
 
+            /*************************ADD CORS***************************************/
+            /*************************ADD CORS***************************************/
+            services.Configure<MvcOptions>(options =>
+            {
+                options.Filters.Add(new CorsAuthorizationFilterFactory("AllowSpecificOrigin"));
+            });
+            services.AddCors(options =>
+            {
+                options.AddPolicy("AllowSpecificOrigin",
+                    builder => builder.WithOrigins("http://localhost:5000").AllowAnyHeader()
+                        .AllowAnyMethod());
+            });
+            /*************************ADD CORS***************************************/
+            /*************************ADD CORS***************************************/
+
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new Info {Title = "VeThor Tracker API", Version = "v1"});
@@ -75,6 +90,15 @@ namespace VethorScan.Web
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IHostingEnvironment env)
         {
+            /*************************ADD CORS***************************************/
+            /*************************ADD CORS***************************************/
+
+            // Shows UseCors with named policy.
+            app.UseCors("AllowSpecificOrigin");
+
+            /*************************ADD CORS***************************************/
+            /*************************ADD CORS***************************************/
+
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
@@ -84,7 +108,7 @@ namespace VethorScan.Web
 
             app.UseSwaggerUI(c =>
             {
-                c.SwaggerEndpoint("/swagger/v1/swagger.json", "My API V1");
+                c.SwaggerEndpoint("../swagger/v1/swagger.json", "My API V1");
             });
 
             app.Use(async (context, next) =>
@@ -101,7 +125,6 @@ namespace VethorScan.Web
                     await context.Response.WriteAsync(": Something went terribly wrong!");
                 }
             });
-
 
             app.UseMvcWithDefaultRoute();
         }

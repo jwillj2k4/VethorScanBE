@@ -3,12 +3,12 @@
     public class UserVetResultDto
     {
         public VetResultDto VetResultDto { get; set; }
-        public VeThorResultDto VeThorResultDto { get; set; }
+        public VeThorResultDto VeThorBaseResultDto { get; set; }
         
         public UserVetResultDto()
         {
             VetResultDto = new VetResultDto();
-            VeThorResultDto = new VeThorResultDto();
+            VeThorBaseResultDto = new VeThorResultDto();
         }
     }
 }
