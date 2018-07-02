@@ -1,7 +1,7 @@
 ﻿namespace VethorScan.Contracts
 {
-    public class VetResultDto
+    public class VetResultDto : UserProfitDto
     {
-        public decimal TotalProfit { get; set; }
+        public decimal CurrentProfit { get; set; }
     }
 }
