@@ -51,7 +51,7 @@ namespace VethorScan.AppMgr
                 Func<UserVetAmountsDto, Task<UserVetResultDto>>>
             {
                 //non node
-                {x => !DetermineIfNode(x, 10000, 50000), CalculateThor},
+                {x => !DetermineIfNode(x, 10000, 50000),  y => CalculateThor(y, NodeType.None)},
 
                 //strength
                 {x => DetermineIfNode(x, 10000, 50000), y => CalculateThor(y, NodeType.Strength, 5000, 100)},
@@ -77,7 +77,7 @@ namespace VethorScan.AppMgr
                 Func<UserVetAmountsDto, Task<UserVetResultDto>>>
             {
                 //non node
-                {x => !DetermineIfNode(x, 6000, 6000), CalculateThor},
+                {x => !DetermineIfNode(x, 6000, 6000), y => CalculateThor(y, NodeType.None)},
 
                 //vethor x
                 {x => DetermineIfNode(x, 6000, 16000), y => CalculateThor(y, NodeType.VeThorX, 667, 200)},
@@ -106,7 +106,7 @@ namespace VethorScan.AppMgr
                 Func<UserVetAmountsDto, Task<UserVetResultDto>>>
             {
                 //non node
-                {x => !DetermineIfNode(x, 1000000, 0), CalculateThor},
+                {x => !DetermineIfNode(x, 1000000, 0),  y => CalculateThor(y, NodeType.None)},
 
                 //strength
                 {x => DetermineIfNode(x, 1000000, 5000000), y => CalculateThor(y, NodeType.Strength, 5000, 100)},
@@ -133,7 +133,7 @@ namespace VethorScan.AppMgr
                 Func<UserVetAmountsDto, Task<UserVetResultDto>>>
             {
                 //non node
-                {x => !DetermineIfNode(x, 6000, 6000), CalculateThor},
+                {x => !DetermineIfNode(x, 6000, 6000),  y => CalculateThor(y, NodeType.None)},
 
                 //vethor x
                 {x => DetermineIfNode(x, 600000, 1600000), y => CalculateThor(y, NodeType.VeThorX, 667, 200)},
@@ -152,6 +152,10 @@ namespace VethorScan.AppMgr
             };
         }
 
+        /// <summary>
+        /// Calculates vet profit only
+        /// </summary>
+        /// <param name="totalVetAmount"></param>
         public async Task<UserVetResultDto> CalculateSimple(decimal totalVetAmount)
         {
             var metadata = await GetVetMetadata().ConfigureAwait(false);
@@ -165,6 +169,11 @@ namespace VethorScan.AppMgr
             return result;
         }
             
+        /// <summary>
+        /// Calculates vet and vethor profit, node and xnodes included
+        /// </summary>
+        /// <param name="userVetInformation"></param>
+        /// <returns></returns>
         public Task<IEnumerable<UserVetResultDto>> CalculateAdvanced(UserVetAmountsDto userVetInformation)
         {
             //depending on the split type, call the appropriate dictionary calculator and return
@@ -182,6 +191,10 @@ namespace VethorScan.AppMgr
             return Task.FromResult(result.AsEnumerable());
         }
 
+        /// <summary>
+        /// returns the current price of vet
+        /// </summary>
+        /// <returns></returns>
         public async Task<decimal> GetCurrentVetPrice()
         {
             var vetInformationDto = await GetVetMetadata().ConfigureAwait(false);
@@ -189,6 +202,10 @@ namespace VethorScan.AppMgr
             return vetInformationDto.Data.Quotes.Usd.Price;
         }
 
+        /// <summary>
+        /// returns vet metadata
+        /// </summary>
+        /// <returns></returns>
         public async Task<VetMetaDataDto> GetVetMetadata()
         {
             return await _memCache.GetOrCreateAsync("metadata", entry =>
@@ -198,29 +215,14 @@ namespace VethorScan.AppMgr
             });
 
         }
-
+        
         /// <summary>
-        /// Calculate Vet profit per day
+        /// determines if the passed arguments satisfy node criteria
         /// </summary>
-        /// <param name="userVetInformation"></param>
+        /// <param name="keyVal"></param>
+        /// <param name="minimum"></param>
+        /// <param name="maximum"></param>
         /// <returns></returns>
-        private async Task<decimal> CalculateVeThorProfitPerDay(UserVetAmountsDto userVetInformation)
-        {
-            //10,000 Vet(Vet holding) / 525,770,505 = 0.0019 % of Vet Circulating Supply
-            //Company willing to pay $0.5 per transaction on blockchain, smart contract execution
-            //Let’s say ecosystem is running 100mm transactions daily
-            //=$50mm VeThor
-            //0.0019 % multiplied by $50,000,000 = $950 daily
-
-            var metadata = await GetVetMetadata().ConfigureAwait(false);
-
-            var percentageOfEcoSystem = userVetInformation.UserVetAmount / metadata.Data.CirculatingSupply;
-            var transactionsPerDay = userVetInformation.TransactionsPerSecond * _secondsPerDay;
-            var totalVethor = transactionsPerDay * userVetInformation.CurrentThorPrice;
-
-            return percentageOfEcoSystem * totalVethor;
-        }
-
         private bool DetermineIfNode(KeyValuePair<SplitType, decimal> keyVal, int minimum = int.MinValue, int maximum = int.MaxValue)
         {
             var result =
@@ -231,16 +233,14 @@ namespace VethorScan.AppMgr
             return result;
         }
 
-        private async Task<UserVetResultDto> CalculateThor(UserVetAmountsDto userVetAmountsDto)
-        {
-            UserVetResultDto result = new UserVetResultDto();
-
-            var metadata = await GetVetMetadata().ConfigureAwait(false);
-
-            
-            return result;
-        }
-        
+        /// <summary>
+        /// calculates thor taking node and xnode into consideration
+        /// </summary>
+        /// <param name="userVetAmountsDto"></param>
+        /// <param name="nodeType"></param>
+        /// <param name="amountofHodlers"></param>
+        /// <param name="percentageOfVet"></param>
+        /// <returns></returns>
         private async Task<UserVetResultDto> CalculateThor(UserVetAmountsDto userVetAmountsDto, NodeType nodeType,
             int amountofHodlers = 0, int percentageOfVet = 0)
         {
@@ -266,6 +266,11 @@ namespace VethorScan.AppMgr
             return result;
         }
 
+        /// <summary>
+        /// determines the circulating supply, takes pre/post split into consideration
+        /// </summary>
+        /// <param name="userVetAmountsDto"></param>
+        /// <returns></returns>
         private async Task<long> CalculateCirculatingSupply(UserVetAmountsDto userVetAmountsDto)
         {
             var metadata = await GetVetMetadata().ConfigureAwait(false);
@@ -320,5 +325,27 @@ namespace VethorScan.AppMgr
             return result;
         }
 
+
+        /// <summary>
+        /// Calculate Vet profit per day
+        /// </summary>
+        /// <param name="userVetInformation"></param>
+        /// <returns></returns>
+        private async Task<decimal> CalculateVeThorProfitPerDay(UserVetAmountsDto userVetInformation)
+        {
+            //10,000 Vet(Vet holding) / 525,770,505 = 0.0019 % of Vet Circulating Supply
+            //Company willing to pay $0.5 per transaction on blockchain, smart contract execution
+            //Let’s say ecosystem is running 100mm transactions daily
+            //=$50mm VeThor
+            //0.0019 % multiplied by $50,000,000 = $950 daily
+
+            var metadata = await GetVetMetadata().ConfigureAwait(false);
+
+            var percentageOfEcoSystem = userVetInformation.UserVetAmount / metadata.Data.CirculatingSupply;
+            var transactionsPerDay = userVetInformation.TransactionsPerSecond * _secondsPerDay;
+            var totalVethor = transactionsPerDay * userVetInformation.CurrentThorPrice;
+
+            return percentageOfEcoSystem * totalVethor;
+        }
     }
 }
