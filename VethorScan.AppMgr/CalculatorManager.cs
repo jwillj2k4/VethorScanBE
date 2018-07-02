@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 using VethorScan.Contracts;
 
 namespace VethorScan.AppMgr
@@ -34,7 +35,7 @@ namespace VethorScan.AppMgr
             return result;
         }
 
-        public async Task<UserVetResultDto> CalculateAdvanced(UserVetAmountsDto userVetAmountsDto)
+        public async Task<IEnumerable<UserVetResultDto>> CalculateAdvanced(UserVetAmountsDto userVetAmountsDto)
         {
             var result = await _calculatorService.CalculateAdvanced(userVetAmountsDto).ConfigureAwait(false);
 

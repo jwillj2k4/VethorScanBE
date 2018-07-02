@@ -2,6 +2,7 @@
 {
     public class UserProfitDto
     {
+        public NodeType NodeType { get; set; }
         public decimal ProfitPerDay { get; set; }
         public decimal ProfitPerWeek { get; set; }
         public decimal ProfitPerMonth { get; set; }

@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using VethorScan.AppMgr;
 using VethorScan.Common.CacheProfiles;
@@ -39,7 +40,7 @@ namespace VethorScan.Web.Controllers
 
         [NeverCache]
         [HttpPost("CalculateAdvanced")]
-        public async Task<UserVetResultDto> CalculateAdvanced(UserVetAmountsDto informationDto)
+        public async Task<IEnumerable<UserVetResultDto>> CalculateAdvanced(UserVetAmountsDto informationDto)
         {
             var result = await _calculatorManager.CalculateAdvanced(informationDto).ConfigureAwait(false);
             return result;

@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
+using System.Xml;
 using Microsoft.Extensions.Caching.Memory;
 using VethorScan.Contracts;
 using VethorScan.Domain.Vet;
@@ -14,52 +16,142 @@ namespace VethorScan.AppMgr
         private readonly IMemoryCache _memCache;
         private readonly int _secondsPerDay;
 
-        public readonly Dictionary<Func<KeyValuePair<SplitType, decimal>, bool>, Func<UserVetAmountsDto, Task<UserVetResultDto>>> CalculationHash;
-            
-            
+        private Dictionary<SplitType, Dictionary<Func<KeyValuePair<SplitType, decimal>, bool>,
+            Func<UserVetAmountsDto, Task<UserVetResultDto>>>> _vethorDictionary = null;
+
         public CalculatorService(IMemoryCache memCache, IVetSystem vetSystem)
         {
             _vetSystem = vetSystem;
             _memCache = memCache;
             _secondsPerDay = 86400;
-            CalculationHash = IntializeCalculationDictionary();
+            InitializeDictionary();
         }
 
-        private Dictionary<Func<KeyValuePair<SplitType, decimal>, bool>, 
-            Func<UserVetAmountsDto, Task<UserVetResultDto>>> IntializeCalculationDictionary()
+        private void InitializeDictionary()
+        {
+            _vethorDictionary =
+                new Dictionary<SplitType, Dictionary<Func<KeyValuePair<SplitType, decimal>, bool>,
+                    Func<UserVetAmountsDto, Task<UserVetResultDto>>>>
+                {
+                    {SplitType.PreSplit, IntializePreSplitCalculationDictionary()},
+                    {SplitType.PreSplit, IntializePreSplitXnodeCalculationDictionary()},
+                    {SplitType.PostSplit, IntializePostSplitCalculationDictionary()},
+                    {SplitType.PostSplit, IntializePostSplitXnodeCalculationDictionary()}
+                };
+        }
+
+        /// <summary>
+        /// Pre split regular 
+        /// </summary>
+        /// <returns></returns>
+        private Dictionary<Func<KeyValuePair<SplitType, decimal>, bool>,
+            Func<UserVetAmountsDto, Task<UserVetResultDto>>> IntializePreSplitCalculationDictionary()
         {
             return new Dictionary<Func<KeyValuePair<SplitType, decimal>, bool>,
                 Func<UserVetAmountsDto, Task<UserVetResultDto>>>
             {
                 //non node
-                {x => !DetermineIfNode(x, 10000, 1000000, 50000, 5000000), CalculateThor},
+                {x => !DetermineIfNode(x, 10000, 50000), CalculateThor},
 
                 //strength
-                {x => DetermineIfNode(x, 10000, 1000000, 50000, 5000000), y => CalculateThor(y, 5000, 100)},
+                {x => DetermineIfNode(x, 10000, 50000), y => CalculateThor(y, NodeType.Strength, 5000, 100)},
 
                 //thunder
-                {x => DetermineIfNode(x, 50000, 5000000, 150000, 15000000), y => CalculateThor(y, 1600, 150)},
+                {x => DetermineIfNode(x, 50000, 150000), y => CalculateThor(y, NodeType.Thunder, 1600, 150)},
 
                 //Mjolnir
-                {x => DetermineIfNode(x, 150000, 15000000, 250000, 25000000), y => CalculateThor(y, 667, 200)},
+                {x => DetermineIfNode(x, 150000, 250000), y => CalculateThor(y, NodeType.Mjolnir, 667, 200)},
 
-                //vethor x
-                {x => DetermineIfNode(x, 6000, 600000, 16000, 1600000), y => CalculateThor(y, 667, 200)},
-
-                //strenght x
-                {x => DetermineIfNode(x, 16000, 1600000, 56000, 5600000), y => CalculateThor(y, 667, 200)},
-
-                //thunder x
-                {x => DetermineIfNode(x, 56000, 5600000, 156000, 15600000), y => CalculateThor(y, 667, 200)},
-
-                //mjolnir x
-                {x => DetermineIfNode(x, 156000, 15600000, 256000, 25600000), y => CalculateThor(y, 667, 200)},
-
-                //thrudheim
-                {x => DetermineIfNode(x, 256000, 25600000, 999999999, 999999999), y => CalculateThor(y, 667, 200)},
+                //Thrudheim
+                {x => DetermineIfNode(x, 250000), y => CalculateThor(y, NodeType.Thrudheim, 667, 200)},
             };
         }
-        
+
+        /// <summary>
+        /// pre split xnode
+        /// </summary>
+        private Dictionary<Func<KeyValuePair<SplitType, decimal>, bool>, 
+            Func<UserVetAmountsDto, Task<UserVetResultDto>>> IntializePreSplitXnodeCalculationDictionary()
+        {
+            return new Dictionary<Func<KeyValuePair<SplitType, decimal>, bool>,
+                Func<UserVetAmountsDto, Task<UserVetResultDto>>>
+            {
+                //non node
+                {x => !DetermineIfNode(x, 6000, 6000), CalculateThor},
+
+                //vethor x
+                {x => DetermineIfNode(x, 6000, 16000), y => CalculateThor(y, NodeType.VeThorX, 667, 200)},
+
+                //strenght x
+                {x => DetermineIfNode(x, 16000, 56000), y => CalculateThor(y, NodeType.StrengthX, 667, 200)},
+
+                //thunder x
+                {x => DetermineIfNode(x, 56000, 156000), y => CalculateThor(y, NodeType.ThunderX, 667, 200)},
+
+                //mjolnir x
+                {x => DetermineIfNode(x, 156000, 256000), y => CalculateThor(y, NodeType.MjolnirX, 667, 200)},
+
+                //thrudheim
+                {x => DetermineIfNode(x, 256000), y => CalculateThor(y, NodeType.Thrudheim, 667, 200)},
+            };
+        }
+
+        /// <summary>
+        /// post split regular
+        /// </summary>
+        private Dictionary<Func<KeyValuePair<SplitType, decimal>, bool>,
+            Func<UserVetAmountsDto, Task<UserVetResultDto>>> IntializePostSplitCalculationDictionary()
+        {
+            return new Dictionary<Func<KeyValuePair<SplitType, decimal>, bool>,
+                Func<UserVetAmountsDto, Task<UserVetResultDto>>>
+            {
+                //non node
+                {x => !DetermineIfNode(x, 1000000, 0), CalculateThor},
+
+                //strength
+                {x => DetermineIfNode(x, 1000000, 5000000), y => CalculateThor(y, NodeType.Strength, 5000, 100)},
+
+                //thunder
+                {x => DetermineIfNode(x, 5000000, 15000000), y => CalculateThor(y, NodeType.Thunder, 1600, 150)},
+
+                //Mjolnir
+                {x => DetermineIfNode(x, 15000000, 25000000), y => CalculateThor(y, NodeType.Mjolnir, 667, 200)},
+                
+                //thrudheim
+                {x => DetermineIfNode(x, 25000000), y => CalculateThor(y, NodeType.Thrudheim, 667, 200)},
+            };
+        }
+
+        /// <summary>
+        /// post split xnode
+        /// </summary>
+        /// <returns></returns>
+        private Dictionary<Func<KeyValuePair<SplitType, decimal>, bool>,
+            Func<UserVetAmountsDto, Task<UserVetResultDto>>> IntializePostSplitXnodeCalculationDictionary()
+        {
+            return new Dictionary<Func<KeyValuePair<SplitType, decimal>, bool>,
+                Func<UserVetAmountsDto, Task<UserVetResultDto>>>
+            {
+                //non node
+                {x => !DetermineIfNode(x, 6000, 6000), CalculateThor},
+
+                //vethor x
+                {x => DetermineIfNode(x, 600000, 1600000), y => CalculateThor(y, NodeType.VeThorX, 667, 200)},
+
+                //strength x
+                {x => DetermineIfNode(x, 1600000, 5600000), y => CalculateThor(y, NodeType.StrengthX, 667, 200)},
+
+                //thunder x
+                {x => DetermineIfNode(x, 5600000, 15600000), y => CalculateThor(y, NodeType.Thunder, 667, 200)},
+
+                //mjolnir x
+                {x => DetermineIfNode(x, 15600000, 25600000), y => CalculateThor(y, NodeType.MjolnirX, 667, 200)},
+
+                //thrudheim
+                {x => DetermineIfNode(x, 25600000), y => CalculateThor(y, NodeType.Thrudheim, 667, 200)},
+            };
+        }
+
         public async Task<UserVetResultDto> CalculateSimple(decimal totalVetAmount)
         {
             var metadata = await GetVetMetadata().ConfigureAwait(false);
@@ -72,21 +164,22 @@ namespace VethorScan.AppMgr
 
             return result;
         }
-
-        public async Task<UserVetResultDto> CalculateAdvanced(UserVetAmountsDto userVetInformation)
+            
+        public Task<IEnumerable<UserVetResultDto>> CalculateAdvanced(UserVetAmountsDto userVetInformation)
         {
-            //Vethor generation is calculated by the following
-            //total vet amount * the rate of vethor to vet generated per day
-            var metadata = await GetVetMetadata().ConfigureAwait(false);
+            //depending on the split type, call the appropriate dictionary calculator and return
+            IList<UserVetResultDto> result = new List<UserVetResultDto>();
 
-            userVetInformation.CirculatingSupply =
-                userVetInformation.CirculatingSupply == 0 ? metadata.Data.CirculatingSupply : userVetInformation.CirculatingSupply;
+            //for each matching dictionary, determine where the current user stands for their hodlings.
+            _vethorDictionary[userVetInformation.Split].Values.ToList().ForEach(async x =>
+            {
+                //create a result dto for each group
+                var dto = await x.Invoke(userVetInformation).ConfigureAwait(false);
 
-            var result = await CalculateSimple(userVetInformation.UserVetAmount).ConfigureAwait(false);
+                result.Add(dto);
+            });
 
-            result.VeThorBaseResultDto = await CalculateBaseVeThorAmounts(userVetInformation).ConfigureAwait(false);
-
-            return result;
+            return Task.FromResult(result.AsEnumerable());
         }
 
         public async Task<decimal> GetCurrentVetPrice()
@@ -128,24 +221,92 @@ namespace VethorScan.AppMgr
             return percentageOfEcoSystem * totalVethor;
         }
 
+        private bool DetermineIfNode(KeyValuePair<SplitType, decimal> keyVal, int minimum = int.MinValue, int maximum = int.MaxValue)
+        {
+            var result =
+                //if value is greater or equal to minimum and less than maximum presplit
+                keyVal.Value >= minimum && maximum != int.MaxValue && keyVal.Value < maximum ||
+                keyVal.Value >= minimum && maximum == int.MaxValue;
+
+            return result;
+        }
+
+        private async Task<UserVetResultDto> CalculateThor(UserVetAmountsDto userVetAmountsDto)
+        {
+            UserVetResultDto result = new UserVetResultDto();
+
+            var metadata = await GetVetMetadata().ConfigureAwait(false);
+
+            
+            return result;
+        }
+        
+        private async Task<UserVetResultDto> CalculateThor(UserVetAmountsDto userVetAmountsDto, NodeType nodeType,
+            int amountofHodlers = 0, int percentageOfVet = 0)
+        {
+            //Vethor generation is calculated by the following
+            //total vet amount * the rate of vethor to vet generated per day
+            var metadata = await GetVetMetadata().ConfigureAwait(false);
+
+            userVetAmountsDto.CirculatingSupply = await CalculateCirculatingSupply(userVetAmountsDto).ConfigureAwait(false);
+
+            UserVetResultDto result = await CalculateSimple(userVetAmountsDto.UserVetAmount).ConfigureAwait(false);
+
+            if (nodeType == NodeType.None)
+            {
+                result.VeThorResultDto = await CalculateProjectiveVeThorAmounts(userVetAmountsDto).ConfigureAwait(false);
+                return result;
+            }
+
+            //calculate thor amount perday based on argueents 
+
+
+            result.VeThorResultDto.NodeType = nodeType;
+
+            return result;
+        }
+
+        private async Task<long> CalculateCirculatingSupply(UserVetAmountsDto userVetAmountsDto)
+        {
+            var metadata = await GetVetMetadata().ConfigureAwait(false);
+
+            return userVetAmountsDto.CirculatingSupply != 0
+                ? userVetAmountsDto.CirculatingSupply
+                : userVetAmountsDto.Split == SplitType.PostSplit
+                    ?
+                    //append 2 zeros at the end for post split, until the 9th.
+                    DateTime.UtcNow.Month < 7 && DateTime.UtcNow.Day < 10 && DateTime.UtcNow.Year == 2018
+                        ?
+                        int.Parse(metadata.Data.CirculatingSupply.ToString().PadRight(2, '0'))
+                        :
+                        metadata.Data.CirculatingSupply
+
+                    : metadata.Data.CirculatingSupply;
+        }
+        
         /// <summary>
-        /// Calclate vethor day amount
+        /// Calclate daily vethor amount
         /// </summary>
         /// <param name="userVetInformation"></param>
         /// <returns></returns>
-        private async Task<decimal> CalculateVeThorDayAmount(UserVetAmountsDto userVetInformation)
+        private async Task<decimal> CalculateDailyVeThorAmount(UserVetAmountsDto userVetInformation)
         {
             var metadata = await GetVetMetadata().ConfigureAwait(false);
 
             return userVetInformation.UserVetAmount * metadata.Data.VetToThorRate;
         }
 
-        private async Task<VeThorResultDto> CalculateBaseVeThorAmounts(UserVetAmountsDto userVetInformation)
+        /// <summary>
+        /// Calculate projective vethor amounts
+        /// </summary>
+        /// <param name="userVetInformation"></param>
+        /// <returns></returns>
+        private async Task<VeThorResultDto> CalculateProjectiveVeThorAmounts(UserVetAmountsDto userVetInformation)
         {
             VeThorResultDto result =
                 new VeThorResultDto
                 {
-                    AmountPerDay = await CalculateVeThorDayAmount(userVetInformation).ConfigureAwait(false),
+                    AmountPerDay = await CalculateDailyVeThorAmount(userVetInformation).ConfigureAwait(false),
                     ProfitPerDay = await CalculateVeThorProfitPerDay(userVetInformation).ConfigureAwait(false)
                 };
 
@@ -159,34 +320,5 @@ namespace VethorScan.AppMgr
             return result;
         }
 
-        private static bool DetermineIfNode(KeyValuePair<SplitType, decimal> keyVal, int preSplitMin, int postSplitMin, int preSplitMax, int postSplitMax)
-        {
-            var result = keyVal.Key.Equals(SplitType.BeforeSplit)
-                ?
-                //if value is greater or equal to minimum and less than maximum presplit
-                keyVal.Value >= preSplitMin && keyVal.Value < preSplitMax
-
-                //if value is greater or equal to minimum and less than maximum post
-                : keyVal.Value >= postSplitMin && keyVal.Value < postSplitMax;
-
-            return result;
-        }
-
-        private async Task<UserVetResultDto> CalculateThor(UserVetAmountsDto userVetAmountsDto)
-        {
-            UserVetResultDto result = new UserVetResultDto();
-
-            var metadata = await GetVetMetadata().ConfigureAwait(false);
-
-            result.VeThorBaseResultDto.AmountPerDay = userVetAmountsDto.UserVetAmount * metadata.Data.VetToThorRate;
-
-            return result;
-        }
-        
-        private static async Task<UserVetResultDto> CalculateThor(UserVetAmountsDto userVetAmountsDto, int amountofHodlers, int percentageOfVet)
-        {
-            UserVetResultDto result = null;
-            return result;
-        }
     }
 }
