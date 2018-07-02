@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Xml;
 using Microsoft.Extensions.Caching.Memory;
 using VethorScan.Contracts;
 using VethorScan.Domain.Vet;
@@ -17,8 +16,13 @@ namespace VethorScan.AppMgr
         private readonly int _secondsPerDay;
 
         private Dictionary<SplitType, Dictionary<Func<KeyValuePair<SplitType, decimal>, bool>,
-            Func<UserVetAmountsDto, Task<UserVetResultDto>>>> _vethorDictionary = null;
+            Func<UserVetAmountsDto, Task<UserVetResultDto>>>> _vethorDictionary;
 
+        /// <summary>
+        /// constructor
+        /// </summary>
+        /// <param name="memCache"></param>
+        /// <param name="vetSystem"></param>
         public CalculatorService(IMemoryCache memCache, IVetSystem vetSystem)
         {
             _vetSystem = vetSystem;
@@ -27,6 +31,9 @@ namespace VethorScan.AppMgr
             InitializeDictionary();
         }
 
+        /// <summary>
+        /// initialize dictionary
+        /// </summary>
         private void InitializeDictionary()
         {
             _vethorDictionary =
@@ -168,7 +175,7 @@ namespace VethorScan.AppMgr
 
             return result;
         }
-            
+
         /// <summary>
         /// Calculates vet and vethor profit, node and xnodes included
         /// </summary>
@@ -180,13 +187,23 @@ namespace VethorScan.AppMgr
             IList<UserVetResultDto> result = new List<UserVetResultDto>();
 
             //for each matching dictionary, determine where the current user stands for their hodlings.
-            _vethorDictionary[userVetInformation.Split].Values.ToList().ForEach(async x =>
-            {
-                //create a result dto for each group
-                var dto = await x.Invoke(userVetInformation).ConfigureAwait(false);
+            _vethorDictionary[userVetInformation.Split]
+                .Values.ToList()
+                .ForEach(async x =>
+                {
+                    //create a result dto for each group
+                    var dto = await x.Invoke(userVetInformation).ConfigureAwait(false);
 
-                result.Add(dto);
-            });
+                    result.Add(dto);
+                });
+
+            //since we only display 'none' vethor node types once,
+            //and the result has the potential to contain 2 'none' node types due to each split type having a 'none' calculation,
+            //always remove 1 'none' node type from the list
+            UserVetResultDto resultToRemove = result.FirstOrDefault(x => x.VeThorResultDto.NodeType == NodeType.None);
+
+            if(resultToRemove != null)
+                result.Remove(resultToRemove);
 
             return Task.FromResult(result.AsEnumerable());
         }
