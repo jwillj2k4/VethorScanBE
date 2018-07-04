@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Azure.KeyVault.Models;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.Extensions.Caching.Memory;
 using VethorScan.Contracts;
 using VethorScan.Domain.Vet;
@@ -18,9 +16,6 @@ namespace VethorScan.AppMgr
         private readonly int _secondsPerDay;
 
         private List<KeyValuePair<SplitType, List<Func<UserVetAmountsDto, Task<UserVetResultDto>>>>> _vethorDictionary;
-        
-        private long _pledgeNodeVethorAmount;
-        private long _pledgeXNodeVethorAmount;
 
         /// <summary>
         /// constructor
@@ -61,8 +56,8 @@ namespace VethorScan.AppMgr
                 dto => Is(dto, NodeType.None, 0, 10000),
                 dto => Is(dto, NodeType.Strength, 10000, 50000, .000432, 1),
                 dto => Is(dto, NodeType.Thunder, 50000, 150000, .000432, 1.5),
-                dto => Is(dto, NodeType.Mjolnir, 150000, int.MaxValue, .000432, 2),
-                dto => Is(dto, NodeType.Thrudheim, 1500000, int.MaxValue, .000432, 2),
+                dto => Is(dto, NodeType.Mjolnir, 150000, long.MaxValue, .000432, 2),
+                dto => Is(dto, NodeType.Thrudheim, 1500000, long.MaxValue, .000432, 2),
             };
         }
 
@@ -78,7 +73,7 @@ namespace VethorScan.AppMgr
                 dto => Is(dto, NodeType.VeThorX, 6000, 16000, .000432, .25),
                 dto => Is(dto, NodeType.StrengthX, 16000, 56000, .000432, 1),
                 dto => Is(dto, NodeType.ThunderX, 56000, 156000, .000432, 1.5),
-                dto => Is(dto, NodeType.MjolnirX, 156000, int.MaxValue, .000432, 2),
+                dto => Is(dto, NodeType.MjolnirX, 156000, long.MaxValue, .000432, 2),
             };
         }
 
@@ -93,8 +88,8 @@ namespace VethorScan.AppMgr
                 dto => Is(dto, NodeType.None, 0, 1000000),
                 dto => Is(dto, NodeType.Strength, 1000000, 5000000, .000432, 1),
                 dto => Is(dto, NodeType.Thunder, 5000000, 15000000, .000432, 1.5),
-                dto => Is(dto, NodeType.Mjolnir, 15000000, int.MaxValue, .000432, 2),
-                dto => Is(dto, NodeType.Thrudheim, 15000000, int.MaxValue, .000432, 2),
+                dto => Is(dto, NodeType.Mjolnir, 15000000, long.MaxValue, .000432, 2),
+                dto => Is(dto, NodeType.Thrudheim, 15000000, long.MaxValue, .000432, 2),
             };
         }
 
@@ -110,11 +105,12 @@ namespace VethorScan.AppMgr
                 dto => Is(dto, NodeType.VeThorX, 600000, 1600000, .000432, .25),
                 dto => Is(dto, NodeType.StrengthX, 1600000, 5600000, .000432, 1),
                 dto => Is(dto, NodeType.ThunderX, 5600000, 15600000, .000432, 1.5),
-                dto => Is(dto, NodeType.MjolnirX, 15600000, int.MaxValue, .000432, 2),
+                dto => Is(dto, NodeType.MjolnirX, 15600000, long.MaxValue, .000432, 2),
             };
         }
 
-        private Task<UserVetResultDto> Is(UserVetAmountsDto dto, NodeType nodeType,  int vetMinimum = 0, int vetMaximum = Int32.MaxValue, double baseThorGeneration = .000432, double bonusPercentage = 0)
+        private Task<UserVetResultDto> Is(UserVetAmountsDto dto, NodeType nodeType, long vetMinimum = 0, long vetMaximum = long.MaxValue, 
+            double baseThorGeneration = .000432, double bonusPercentage = 0)
         {
             Task<UserVetResultDto> task = new Task<UserVetResultDto>(() =>
             {
@@ -211,12 +207,13 @@ namespace VethorScan.AppMgr
         /// <param name="minimum"></param>
         /// <param name="maximum"></param>
         /// <returns></returns>
-        private bool DetermineIfNode(UserVetAmountsDto userVetAmountsDto, int minimum = 10000, int maximum = int.MaxValue)
+        private bool DetermineIfNode(UserVetAmountsDto userVetAmountsDto, long minimum, long maximum = long.MaxValue)
         {
             var result =
                 //if value is greater or equal to vetMinimum and less than vetMaximum presplit
-                userVetAmountsDto.UserVetAmount >= minimum && maximum != int.MaxValue && userVetAmountsDto.UserVetAmount < maximum ||
-                userVetAmountsDto.UserVetAmount >= minimum && maximum == int.MaxValue;
+                userVetAmountsDto.UserVetAmount >= minimum && userVetAmountsDto.UserVetAmount < maximum && maximum != long.MaxValue 
+                ||
+                userVetAmountsDto.UserVetAmount >= minimum && maximum == long.MaxValue;
 
             return result;
         }
@@ -272,7 +269,7 @@ namespace VethorScan.AppMgr
                     ?
                     //append 2 zeros at the end for post split, until the 9th.
                     DateTime.UtcNow.Month < 7 && DateTime.UtcNow.Day < 10 && DateTime.UtcNow.Year == 2018
-                        ? int.Parse(metadata.Data.CirculatingSupply.ToString().PadRight(2, '0'))
+                        ? long.Parse(metadata.Data.CirculatingSupply.ToString().PadRight(2, '0'))
                         : metadata.Data.CirculatingSupply
 
                     : metadata.Data.CirculatingSupply;
