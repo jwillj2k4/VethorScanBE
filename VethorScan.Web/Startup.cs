@@ -38,9 +38,9 @@ namespace VethorScan.Web
             // Build the intermediate service provider
             var sp = services.BuildServiceProvider();
 
-            var calculatorManager = new CalculatorManager(new CalculatorService(sp.GetService<IMemoryCache>(), sp.GetService<IVetSystem>()));
+            var vetDictionaryService = new VetDictionaryService();
 
-            //Task.Run(async () => await calculatorManager.Initialize().ConfigureAwait(false));
+            var calculatorManager = new CalculatorManager(new CalculatorService(sp.GetService<IMemoryCache>(), sp.GetService<IVetSystem>(), vetDictionaryService));
 
             services.AddSingleton(calculatorManager);
 

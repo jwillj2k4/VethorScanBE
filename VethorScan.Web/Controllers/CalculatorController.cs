@@ -17,32 +17,32 @@ namespace VethorScan.Web.Controllers
         }
 
         [HttpGet("GetVetPrice")]
-        public async Task<decimal> GetCurrentVetPrice()
+        public Task<decimal> GetCurrentVetPrice()
         {
-            var result = await _calculatorManager.GetCurrentVetPrice().ConfigureAwait(false);
+            var result = _calculatorManager.GetCurrentVetPrice();
             return result;
         }
 
         [HttpGet("GetVetMetadata")]
-        public async Task<VetMetaDataDto> GetVetMetadata()
+        public Task<VetMetaDataDto> GetVetMetadata()
         {
-            var result = await _calculatorManager.GetVetMetadata().ConfigureAwait(false);
+            var result = _calculatorManager.GetVetMetadata();
             return result;
         }
 
         [NeverCache]
         [HttpPost("CalculateSimple")]
-        public async Task<UserVetResultDto> CalculateSimple(decimal totalVetAmount)
+        public List<Task<UserVetResultDto>> CalculateSimple(decimal totalVetAmount)
         {
-            var result = await _calculatorManager.CalculateSimple(totalVetAmount).ConfigureAwait(false);
+            var result = _calculatorManager.CalculateSimple(totalVetAmount);
             return result;
         }
 
         [NeverCache]
         [HttpPost("CalculateAdvanced")]
-        public async Task<IEnumerable<UserVetResultDto>> CalculateAdvanced(UserVetAmountsDto informationDto)
+        public Task<IEnumerable<Task<UserVetResultDto>>> CalculateAdvanced(UserVetAmountsDto informationDto)
         {
-            var result = await _calculatorManager.CalculateAdvanced(informationDto).ConfigureAwait(false);
+            var result = _calculatorManager.CalculateAdvanced(informationDto);
             return result;
         }
     }

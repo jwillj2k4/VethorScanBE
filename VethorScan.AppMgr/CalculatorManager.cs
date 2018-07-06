@@ -10,9 +10,8 @@ namespace VethorScan.AppMgr
 
         public CalculatorManager(CalculatorService calculatorService)
         {
-            this._calculatorService = calculatorService;
+            _calculatorService = calculatorService;
         }
-
 
         public async Task<VetMetaDataDto> GetVetMetadata()
         {
@@ -28,16 +27,16 @@ namespace VethorScan.AppMgr
             return price;
         }
 
-        public async Task<UserVetResultDto> CalculateSimple(decimal totalVetAmount)
+        public List<Task<UserVetResultDto>> CalculateSimple(decimal totalVetAmount)
         {
-            var result = await _calculatorService.CalculateSimple(totalVetAmount).ConfigureAwait(false);
+            var result = _calculatorService.CalculateSimple(totalVetAmount);
 
             return result;
         }
 
-        public async Task<IEnumerable<UserVetResultDto>> CalculateAdvanced(UserVetAmountsDto userVetAmountsDto)
+        public Task<IEnumerable<Task<UserVetResultDto>>> CalculateAdvanced(UserVetAmountsDto userVetAmountsDto)
         {
-            var result = await _calculatorService.CalculateAdvanced(userVetAmountsDto).ConfigureAwait(false);
+            var result = _calculatorService.CalculateAdvanced(userVetAmountsDto);
 
             return result;
         }

@@ -20,6 +20,5 @@ namespace VethorScan.Web.Controllers
         {
             return new object();
         }
-
     }
 }
