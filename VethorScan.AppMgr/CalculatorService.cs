@@ -17,8 +17,8 @@ namespace VethorScan.AppMgr
 
         private readonly VetDictionaryService _vetDictionaryService;
 
-        public Dictionary<Func<NodeType, bool>, Func<UserVetAmountsDto, List<Task<UserVetResultDto>>>> CalculationDictionary =
-            new Dictionary<Func<NodeType, bool>, Func<UserVetAmountsDto, List<Task<UserVetResultDto>>>>();
+        public Dictionary<Func<NodeType, bool>, Func<UserVetAmountsDto, List<Task<UserProfitDto>>>> CalculationDictionary =
+            new Dictionary<Func<NodeType, bool>, Func<UserVetAmountsDto, List<Task<UserProfitDto>>>>();
 
         /// <summary>
         /// constructor
@@ -38,19 +38,9 @@ namespace VethorScan.AppMgr
         /// Calculates vet profit only
         /// </summary>
         /// <param name="totalVetAmount"></param>
-        public List<Task<UserVetResultDto>>  CalculateSimple(decimal totalVetAmount)
+        public IEnumerable<Task<UserProfitDto>>  CalculateSimple(decimal totalVetAmount)
         {
-            var results = new List<Task<UserVetResultDto>>();
-
-            KeyValuePair<Func<decimal, bool>, NodeType> foundval = _vetDictionaryService.VeThorNodeTypeDictionary.FirstOrDefault(z => z.Key.Invoke(totalVetAmount));
-
-            var nodeList = foundval
-                .Value;
-
-            var foundMatches = CalculationDictionary.FirstOrDefault(x => x.Key.Invoke(nodeList));
-
-            results.AddRange(
-                foundMatches.Value.Invoke(new UserVetAmountsDto {UserVetAmount = totalVetAmount}));
+            var results = CalculateAdvanced(new UserVetAmountsDto {UserVetAmount = totalVetAmount});
 
             return results;
         }
@@ -60,20 +50,18 @@ namespace VethorScan.AppMgr
         /// </summary>
         /// <param name="userVetAmountsDto"></param>
         /// <returns></returns>
-        public Task<IEnumerable<Task<UserVetResultDto>>> CalculateAdvanced(UserVetAmountsDto userVetAmountsDto)
+        public IEnumerable<Task<UserProfitDto>> CalculateAdvanced(UserVetAmountsDto userVetAmountsDto)
         {
-            IList<Task<UserVetResultDto>> result = new List<Task<UserVetResultDto>>();
+            var results = new List<Task<UserProfitDto>>();
 
-            var nodeType =_vetDictionaryService.VeThorNodeTypeDictionary[x => x == userVetAmountsDto.UserVetAmount];
+            NodeType nodeType = _vetDictionaryService.NodeDictionary.FirstOrDefault(z => z.Key.Invoke(userVetAmountsDto.UserVetAmount)).Value;
 
-            CalculationDictionary.Where(x => x.Key.Invoke(nodeType)).ToList().ForEach(a =>
-                a.Value.Invoke(userVetAmountsDto)
-                    .ForEach(b =>
-                    {
-                        result.Add(b);
-                    }));
+            KeyValuePair<Func<NodeType, bool>, Func<UserVetAmountsDto, List<Task<UserProfitDto>>>> calculations = CalculationDictionary.FirstOrDefault(x => x.Key.Invoke(nodeType));
 
-            return Task.FromResult(result.AsEnumerable());
+            results.AddRange(
+                calculations.Value.Invoke(userVetAmountsDto));
+
+            return results;
         }
 
         /// <summary>
@@ -99,7 +87,7 @@ namespace VethorScan.AppMgr
                 return _vetSystem.GetVetMetadata();
             });
 
-        }
+        } 
 
 
         /// <summary>
@@ -108,102 +96,233 @@ namespace VethorScan.AppMgr
         private void InitializeCalculationDictionary()
         {
             CalculationDictionary =
-                new Dictionary<Func<NodeType, bool>, Func<UserVetAmountsDto, List<Task<UserVetResultDto>>>>
+                new Dictionary<Func<NodeType, bool>, Func<UserVetAmountsDto, List<Task<UserProfitDto>>>>
                 {
                     {
                         x => x.ExactMatch(NodeType.None),
-                        dto => new List<Task<UserVetResultDto>> {Calculate(dto, NodeType.None)}
+                        dto => new List<Task<UserProfitDto>> {Calculate(dto, NodeType.None, 0)}
                     },
                     {
                         x => x.ExactMatch(NodeType.VeThorX),
-                        dto => new List<Task<UserVetResultDto>> {Calculate(dto, NodeType.VeThorX, .000432, .25)}
+                        dto => new List<Task<UserProfitDto>> { XNodeCalculate(dto, NodeType.VeThorX, 0.00006, .25)}
                     },
                     {
                         x => x.ExactMatch(NodeType.Strength | NodeType.VeThorX),
-                        dto => new List<Task<UserVetResultDto>>
+                        dto => new List<Task<UserProfitDto>>
                         {
-                            Calculate(dto, NodeType.Strength, .000432, 1),
-                            Calculate(dto, NodeType.VeThorX, .000432, .25)
+                            Calculate(dto, NodeType.Strength, 0.00015, 1),
+                            XNodeCalculate(dto, NodeType.VeThorX, 0.00006, .25, Calculate(dto, NodeType.Strength, 0.00015, 1))
                         }
                     },
                     {
                         x => x.ExactMatch(NodeType.Strength | NodeType.StrengthX),
-                        dto => new List<Task<UserVetResultDto>>
+                        dto => new List<Task<UserProfitDto>>
                         {
-                            Calculate(dto, NodeType.Strength, .000432, 1),
-                            Calculate(dto, NodeType.StrengthX, .000432, 1)
+                            Calculate(dto, NodeType.Strength, 0.00015, 1),
+
+                            //strengthX is strengthX + strength
+                            XNodeCalculate(dto, NodeType.StrengthX, 0.00006, 1, Calculate(dto, NodeType.Strength, 0.00015, 1))
                         }
                     },
                     {
                         x => x.ExactMatch(NodeType.Thunder | NodeType.StrengthX),
-                        dto => new List<Task<UserVetResultDto>>
+                        dto => new List<Task<UserProfitDto>>
                         {
-                            Calculate(dto, NodeType.Thunder, .000432, 1.5),
-                            Calculate(dto, NodeType.StrengthX, .000432, 1)
+                            Calculate(dto, NodeType.Thunder, 0.00015, 1.5),
+
+                            //strengthX is strengthX + strength
+                            XNodeCalculate(dto, NodeType.StrengthX, 0.00006, 1, Calculate(dto, NodeType.Strength, 0.00015, 1))
                         }
                     },
                     {
                         x => x.ExactMatch(NodeType.Thunder | NodeType.ThunderX),
-                        dto => new List<Task<UserVetResultDto>>
+                        dto => new List<Task<UserProfitDto>>
                         {
-                            Calculate(dto, NodeType.Thunder, .000432, 1.5),
-                            Calculate(dto, NodeType.ThunderX, .000432, 1.5)
+                            Calculate(dto, NodeType.Thunder, 0.00015, 1.5),
+
+                            //thunderX is thunderX + thunder
+                            XNodeCalculate(dto, NodeType.ThunderX, 0.00006, 1.5, Calculate(dto, NodeType.Thunder, 0.00015, 1.5))
                         }
                     },
                     {
                         x => x.ExactMatch(NodeType.Mjolnir | NodeType.ThunderX),
-                        dto => new List<Task<UserVetResultDto>>
+                        dto => new List<Task<UserProfitDto>>
                         {
-                            Calculate(dto, NodeType.Mjolnir, .000432, 2),
-                            Calculate(dto, NodeType.ThunderX, .000432, 1.5)
+                            Calculate(dto, NodeType.Mjolnir, 0.00015, 2),
+                            
+                            //thunderX is thunderX + thunder
+                            XNodeCalculate(dto, NodeType.ThunderX, 0.00006, 1.5, Calculate(dto, NodeType.Thunder, 0.00015, 1.5))
                         }
                     },
                     {
                         x => x.ExactMatch(NodeType.Mjolnir | NodeType.MjolnirX),
-                        dto => new List<Task<UserVetResultDto>>
+                        dto => new List<Task<UserProfitDto>>
                         {
-                            Calculate(dto, NodeType.Mjolnir, .000432, 2),
-                            Calculate(dto, NodeType.MjolnirX, .000432, 2)
+                            Calculate(dto, NodeType.Mjolnir, 0.00015, 2),
+
+                            //mjolnirX is mjolnirX + mjolnir
+                            XNodeCalculate(dto, NodeType.MjolnirX, 0.00006, 2, Calculate(dto, NodeType.Mjolnir, 0.00015, 2))
                         }
                     },
                     {
                         x => x.ExactMatch(NodeType.Mjolnir | NodeType.MjolnirX | NodeType.Thrudheim),
-                        dto => new List<Task<UserVetResultDto>>
+                        dto => new List<Task<UserProfitDto>>
                         {
-                            Calculate(dto, NodeType.Mjolnir, .000432, 2),
-                            Calculate(dto, NodeType.MjolnirX, .000432, 2),
-                            Calculate(dto, NodeType.Thrudheim, .000432, 2)
+                            //mjolnirX is mjolnirX + mjolnir
+                            XNodeCalculate(dto, NodeType.MjolnirX, 0.00006, 2, Calculate(dto, NodeType.Mjolnir, 0.00015, 2)),
+
+                            Calculate(dto, NodeType.Mjolnir, 0.00015, 2),
+
+                            Calculate(dto, NodeType.Thrudheim, 0.00015, 2, 101, .3)
                         }
                     }
 
                 };
         }
 
+        ///  <summary>
+        ///  calculates thor taking node and xnode into consideration
+        /// 
+        ///  
+        /// 10,000 Vet(Vet holding) / 525,770,505 = 0.0019 % of Vet Circulating Supply
+        /// Company willing to pay $0.5 per transaction on blockchain, smart contract execution
+        /// Let’s say ecosystem is running 100mm transactions daily = $50mm VeThor
+        /// 0.0019 % multiplied by $50,000,000 = $950 daily
+        ///  </summary>
+        /// <param name="dto"></param>
+        /// <param name="nodeType"></param>
+        /// <param name="thorPower">average amount of base rewards base on the number of node hodlers across all nodes, just a estimate provided by vechain</param>
+        /// <param name="bonusPercentage"></param>
+        /// <param name="burnRateBonus">the amount of the burn rate per transaction, for thunderium nodes only</param>
+        private async Task<UserProfitDto> Calculate(UserVetAmountsDto dto, NodeType nodeType, double thorPower = 0.00015, double bonusPercentage = 0, double topTierNodeCount = 0, double burnRateBonus = 0.0)
+        {
+            UserProfitDto result = new UserProfitDto();
+            
+            //get vet profits
+            await CalculateVetProfits(dto, result).ConfigureAwait(false);
+
+            //get Vethor profits 
+            await CalculateVeThorProfits(dto, result, 
+                    (decimal) thorPower, 
+                    (decimal) bonusPercentage, (decimal)topTierNodeCount, (decimal)burnRateBonus)
+                .ConfigureAwait(false);
+            
+            result.NodeType = nodeType;
+
+            return result;
+        }
+
         /// <summary>
-        /// calculates thor taking node and xnode into consideration
+        /// 
         /// </summary>
         /// <param name="dto"></param>
         /// <param name="nodeType"></param>
-        /// <param name="baseThorGeneration">average amount of base rewards base on the number of node hodlers across all nodes, just a estimate provided by vechain</param>
+        /// <param name="thorPower">average amount of base rewards base on the number of node hodlers across all nodes, just a estimate provided by vechain</param>
         /// <param name="bonusPercentage"></param>
+        /// <param name="tier1NodeProfits"></param>
         /// <returns></returns>
-        private async Task<UserVetResultDto> Calculate(UserVetAmountsDto dto, NodeType nodeType,
-            double baseThorGeneration = .000432, double bonusPercentage = 0)
+        private async Task<UserProfitDto> XNodeCalculate(UserVetAmountsDto dto, NodeType nodeType,
+            double thorPower = 0.00006, double bonusPercentage = 0, Task<UserProfitDto> tier1NodeProfits = null)
         {
+            UserProfitDto result = new UserProfitDto();
+
+            UserProfitDto nodeProfits = null;
+
+            if (tier1NodeProfits != null)
+                nodeProfits = await tier1NodeProfits.ConfigureAwait(false);
+
+            //get vet profits
+            await CalculateVetProfits(dto, result).ConfigureAwait(false);
+
+            //get Vethor profits 
+            await CalculateVeThorProfits(dto, result,
+                    (decimal)thorPower,
+                    (decimal)bonusPercentage, 0, 0, nodeProfits)
+                .ConfigureAwait(false);
+            
+
+
+            result.NodeType = nodeType;
+
+            return result;
+        }
+
+        private async Task CalculateVetProfits(UserVetAmountsDto dto, UserProfitDto result)
+        {
+            var metadata = await GetVetMetadata().ConfigureAwait(false);
+
+            result.VetVetProjectedProfits.VetCurrentProfit = dto.UserVetAmount * metadata.Data.Quotes.Usd.Price; 
+        }
+
+        private async Task CalculateVeThorProfits(UserVetAmountsDto dto, UserProfitDto result,
+            decimal avgThorPerNode, decimal bonusPercentage, decimal topTierNodeCount = 0, decimal burnRateBonusPercentage = 0,
+            UserProfitDto nodeProfits = null)
+        {
+            var metadata = await GetVetMetadata().ConfigureAwait(false);
+
             dto.CirculatingSupply =
                 await CalculateCirculatingSupply(dto).ConfigureAwait(false);
 
-            UserVetResultDto result = new UserVetResultDto();
+            decimal percentageOfEcoSystem = dto.UserVetAmount / dto.CirculatingSupply;
 
-            result.VetResultDto =
-                await CalculateVetTransactionalProfits(dto).ConfigureAwait(false);
+            decimal transactionsPerDay = dto.TransactionsPerSecond * 86400;
 
-            result.VeThorResultDto = await CalculateVeThorProfits(dto,
-                (decimal) baseThorGeneration, (decimal) bonusPercentage).ConfigureAwait(false);
+            decimal totalVethor = transactionsPerDay * dto.CurrentThorPrice;
 
-            result.VeThorResultDto.NodeType = result.VetResultDto.NodeType = nodeType;
+            //this is the average value of transactions ran on the actual blockchain
+            result.VeThorVetProjectedProfits.VeThorAverageBlockchainValuePerDay =
+                percentageOfEcoSystem * totalVethor +
+                (nodeProfits?.VeThorVetProjectedProfits?.VeThorAverageBlockchainValuePerDay ?? 0);
 
-            return result;
+            //calculate thor amount per day based on argueents 
+            //example: 0.000432 + (.00015 * 200%) = 0.000732 VeThor per VET per day or 0.26718 per Year;
+            result.VeThorVetProjectedProfits.VeThorAmountPerDay =
+                metadata.Data.VetToThorRate + avgThorPerNode * bonusPercentage +
+                (nodeProfits?.VeThorVetProjectedProfits?.VeThorAmountPerDay ?? 0);
+            
+            //thunderium burn rate bonus, 30% of total transactions across the entire blockchain divided by amount of nodes
+            if (topTierNodeCount > 0)
+            {
+                result.VeThorVetProjectedProfits.BurnRateProfitPerDay
+                    = transactionsPerDay * burnRateBonusPercentage / topTierNodeCount;
+            }
+
+            result.VeThorVetProjectedProfits.BurnRateBonusPercentage = burnRateBonusPercentage * 100;
+
+            result.VeThorVetProjectedProfits.VeThorAmountPerDay =
+                result.VeThorVetProjectedProfits.VeThorAmountPerDay + result.VeThorVetProjectedProfits.BurnRateProfitPerDay;
+
+            result.VeThorVetProjectedProfits.VeThorAmountPerYear =
+                (result.VeThorVetProjectedProfits.VeThorAmountPerDay * 365 * dto.UserVetAmount) +
+                (nodeProfits?.VeThorVetProjectedProfits?.VeThorAmountPerYear ?? 0);
+
+            result.VeThorVetProjectedProfits.ProfitPerDay =
+                dto.CurrentThorPrice * result.VeThorVetProjectedProfits.VeThorAmountPerDay +
+                (nodeProfits?.VeThorVetProjectedProfits?.ProfitPerDay ?? 0);
+
+            result.VeThorVetProjectedProfits.ProfitPerWeek =
+                result.VeThorVetProjectedProfits.ProfitPerDay * 7 +
+                (nodeProfits?.VeThorVetProjectedProfits?.ProfitPerWeek ?? 0);
+
+            result.VeThorVetProjectedProfits.ProfitPerMonth =
+                result.VeThorVetProjectedProfits.ProfitPerWeek * 52 / 12 +
+                (nodeProfits?.VeThorVetProjectedProfits?.ProfitPerWeek ?? 0);
+
+            result.VeThorVetProjectedProfits.ProfitPerYear =
+                result.VeThorVetProjectedProfits.ProfitPerMonth * 12 +
+                (nodeProfits?.VeThorVetProjectedProfits?.ProfitPerMonth ?? 0);
+
+            result.VeThorVetProjectedProfits.Profit3Year =
+                result.VeThorVetProjectedProfits.ProfitPerYear * 3 +
+                (nodeProfits?.VeThorVetProjectedProfits?.ProfitPerYear ?? 0);
+
+            result.VeThorVetProjectedProfits.Profit5Year =
+                result.VeThorVetProjectedProfits.ProfitPerYear * 5 +
+                (nodeProfits?.VeThorVetProjectedProfits?.ProfitPerYear ?? 0);
+
+            result.VeThorVetProjectedProfits.Profit10Year =
+                result.VeThorVetProjectedProfits.ProfitPerYear * 10 +
+                (nodeProfits?.VeThorVetProjectedProfits?.ProfitPerYear ?? 0);
         }
 
         /// <summary>
@@ -222,95 +341,6 @@ namespace VethorScan.AppMgr
                 DateTime.UtcNow.Month < 7 && DateTime.UtcNow.Day < 10 && DateTime.UtcNow.Year == 2018
                     ? long.Parse(metadata.Data.CirculatingSupply.ToString().PadRight(2, '0'))
                     : metadata.Data.CirculatingSupply;
-        }
-
-        /// <summary>
-        /// Calculate projective vethor amounts
-        /// </summary>
-        /// <param name="userVetAmountsDto"></param>
-        /// <param name="averageAmountOfNodeBaseRewards"></param>
-        /// <param name="bonusPercentage"></param>
-        /// <returns></returns>
-        private async Task<VeThorResultDto> CalculateVeThorProfits(UserVetAmountsDto userVetAmountsDto,
-            decimal averageAmountOfNodeBaseRewards = 0, decimal bonusPercentage = 0)
-        {
-            var metadata = await GetVetMetadata().ConfigureAwait(false);
-
-            VeThorResultDto result =
-                new VeThorResultDto
-                {
-                    //calculate thor amount per day based on argueents 
-                    //example: 0.00042 + (baseGenerationOfThor * 200%) = 0.000720 VeThor per VET a day or 0.2628 per Year;
-                    AmountPerDay =
-                        userVetAmountsDto.UserVetAmount *
-                        (metadata.Data.VetToThorRate + averageAmountOfNodeBaseRewards * bonusPercentage)
-                };
-
-            //vethor profit per day is the amount you hold x price per vethor
-            result.ProfitPerDay = metadata.Data.VetToThorRate * result.AmountPerDay;
-
-            CalculateProjectedProfits(result);
-
-            return result;
-        }
-
-        /// <summary>
-        /// Calculate projective vethor amounts
-        /// </summary>
-        /// <param name="userVetAmountsDto"></param>
-        /// <returns></returns>
-        private async Task<VetResultDto> CalculateVetTransactionalProfits(UserVetAmountsDto userVetAmountsDto)
-        {
-            var metadata = await GetVetMetadata().ConfigureAwait(false);
-
-            VetResultDto result =
-                new VetResultDto
-                {
-                    CurrentProfit = userVetAmountsDto.UserVetAmount * metadata.Data.Quotes.Usd.Price,
-
-                    //vet profit per day is the (amount you hold / circulating supply) * transactionsPerDay * currentThorPrice
-                    ProfitPerDay = await CalculateVetTransactionalProfitPerDay(userVetAmountsDto).ConfigureAwait(false)
-                };
-
-            CalculateProjectedProfits(result);
-
-            return result;
-        }
-
-        /// <summary>
-        /// Calculate projected amounts
-        /// </summary>
-        /// <param name="result"></param>
-        private static void CalculateProjectedProfits(UserProfitDto result)
-        {
-            result.ProfitPerWeek = result.ProfitPerDay * 7;
-            result.ProfitPerMonth = result.ProfitPerWeek * 52 / 12;
-            result.ProfitPerYear = result.ProfitPerMonth * 12;
-            result.Profit3Year = result.ProfitPerYear * 3;
-            result.Profit5Year = result.ProfitPerYear * 5;
-            result.Profit10Year = result.ProfitPerYear * 10;
-        }
-
-        /// <summary>
-        /// Calculate Vet profit per day
-        /// </summary>
-        /// <param name="userVetAmountsDto"></param>
-        /// <returns></returns>
-        private async Task<decimal> CalculateVetTransactionalProfitPerDay(UserVetAmountsDto userVetAmountsDto)
-        {
-            //10,000 Vet(Vet holding) / 525,770,505 = 0.0019 % of Vet Circulating Supply
-            //Company willing to pay $0.5 per transaction on blockchain, smart contract execution
-            //Let’s say ecosystem is running 100mm transactions daily
-            //=$50mm VeThor
-            //0.0019 % multiplied by $50,000,000 = $950 daily
-
-            var metadata = await GetVetMetadata().ConfigureAwait(false);
-
-            var percentageOfEcoSystem = userVetAmountsDto.UserVetAmount / metadata.Data.CirculatingSupply;
-            var transactionsPerDay = userVetAmountsDto.TransactionsPerSecond * 86400;
-            var totalVethor = transactionsPerDay * userVetAmountsDto.CurrentThorPrice;
-
-            return percentageOfEcoSystem * totalVethor;
         }
     }
 }

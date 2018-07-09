@@ -32,7 +32,7 @@ namespace VethorScan.Web.Controllers
 
         [NeverCache]
         [HttpPost("CalculateSimple")]
-        public List<Task<UserVetResultDto>> CalculateSimple(decimal totalVetAmount)
+        public IEnumerable<Task<UserProfitDto>> CalculateSimple(decimal totalVetAmount)
         {
             var result = _calculatorManager.CalculateSimple(totalVetAmount);
             return result;
@@ -40,9 +40,9 @@ namespace VethorScan.Web.Controllers
 
         [NeverCache]
         [HttpPost("CalculateAdvanced")]
-        public Task<IEnumerable<Task<UserVetResultDto>>> CalculateAdvanced(UserVetAmountsDto informationDto)
+        public IEnumerable<Task<UserProfitDto>> CalculateAdvanced(UserVetAmountsDto informationDto)
         {
-            var result = _calculatorManager.CalculateAdvanced(informationDto);
+            IEnumerable<Task<UserProfitDto>> result = _calculatorManager.CalculateAdvanced(informationDto);
             return result;
         }
     }

@@ -8,11 +8,16 @@ namespace VethorScan.Contracts
     {
         public static bool ExactMatch(this NodeType op, params NodeType[] checkflags)
         {
-            foreach (NodeType checkflag in checkflags)
+            foreach (var val in op.ToList())
             {
-                if ((op & checkflag) != checkflag)
+                var opFlag = val is NodeType type ? type : 0;
+
+                if (checkflags.Any(nodeType => (nodeType & opFlag) != opFlag))
+                {
                     return false;
+                }
             }
+
             return true;
         }
 

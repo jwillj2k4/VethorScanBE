@@ -27,14 +27,14 @@ namespace VethorScan.AppMgr
             return price;
         }
 
-        public List<Task<UserVetResultDto>> CalculateSimple(decimal totalVetAmount)
+        public IEnumerable<Task<UserProfitDto>> CalculateSimple(decimal totalVetAmount)
         {
             var result = _calculatorService.CalculateSimple(totalVetAmount);
 
             return result;
-        }
+        } 
 
-        public Task<IEnumerable<Task<UserVetResultDto>>> CalculateAdvanced(UserVetAmountsDto userVetAmountsDto)
+        public IEnumerable<Task<UserProfitDto>> CalculateAdvanced(UserVetAmountsDto userVetAmountsDto)
         {
             var result = _calculatorService.CalculateAdvanced(userVetAmountsDto);
 

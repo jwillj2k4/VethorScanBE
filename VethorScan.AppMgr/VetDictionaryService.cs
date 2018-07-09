@@ -6,7 +6,7 @@ namespace VethorScan.AppMgr
 {
     public class VetDictionaryService
     {
-        public readonly Dictionary<Func<decimal, bool>, NodeType> VeThorNodeTypeDictionary =
+        public readonly Dictionary<Func<decimal, bool>, NodeType> NodeDictionary =
             new Dictionary<Func<decimal, bool>, NodeType>
             {
                 {x => x < 600000, NodeType.None},
@@ -25,7 +25,7 @@ namespace VethorScan.AppMgr
 
                 {x => x < 25000000, NodeType.Mjolnir | NodeType.MjolnirX},
 
-                {x => x > 25600000, NodeType.Mjolnir | NodeType.MjolnirX | NodeType.Thrudheim},
+                {x => x >= 25000000, NodeType.Mjolnir | NodeType.MjolnirX | NodeType.Thrudheim},
             };
     }
 }
